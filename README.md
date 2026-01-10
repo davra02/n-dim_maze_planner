@@ -32,6 +32,17 @@ python3 scripts/run_optic.py domains/domain.pddl problems/problem_5x5x5_two_agen
   --fast --plan-out plans/plan_5x5x5_two_agents.out
 ```
 
+Note: if you use `--plan-out`, make sure the output directory exists (e.g. `plans/`).
+
+PowerShell example:
+
+```powershell
+New-Item -ItemType Directory -Force plans | Out-Null
+python scripts\run_optic.py domains\domain.pddl problems\problem_5x5x5_two_agents.pddl `
+  --docker --docker-image n-maze-planner-optic:latest `
+  --fast --plan-out plans\plan_5x5x5_two_agents.out
+```
+
 Apple Silicon example:
 
 ```bash
