@@ -1,0 +1,14 @@
+.git
+__pycache__
+*.pyc
+plans/
+3d_renders/
+planners/optic/optic/release/
+planners/optic/optic/**/CMakeFiles/
+planners/optic/optic/**/CMakeCache.txt
+planners/optic/optic/**/cmake_install.cmake
+planners/optic/optic/**/Makefile
+planners/optic/optic/**/InstallScripts.json
+planners/optic/optic/**/CMakeConfigureLog.yaml
+planners/optic/optic/**/pkgRedirects/
+planners/optic/optic/**/CMakeScratch/

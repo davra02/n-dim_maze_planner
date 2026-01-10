@@ -1,0 +1,25 @@
+.DS_Store
+__pycache__/
+*.py[cod]
+
+# Local logs
+docker_build.log
+
+# Generated plans / renders
+plans/*.out
+3d_renders/*_file.html
+3d_renders/*_both_file.html
+3d_renders/*_a1_file.html
+3d_renders/*_a2_file.html
+
+# OPTIC build artifacts (keep sources, ignore builds)
+planners/optic/optic/build-*/
+planners/optic/optic/release/
+planners/optic/optic/**/CMakeFiles/
+planners/optic/optic/**/CMakeCache.txt
+planners/optic/optic/**/cmake_install.cmake
+planners/optic/optic/**/Makefile
+planners/optic/optic/**/InstallScripts.json
+planners/optic/optic/**/CMakeConfigureLog.yaml
+planners/optic/optic/**/pkgRedirects/
+planners/optic/optic/**/CMakeScratch/

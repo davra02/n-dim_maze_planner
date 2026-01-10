@@ -1,0 +1,178 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Maze 3D</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0b1020; }
+    #info { position: absolute; top: 10px; left: 10px; color: #cbd5f5; font-family: monospace; z-index: 1; }
+    #legend { position: absolute; top: 10px; right: 10px; color: #cbd5f5; font-family: monospace; z-index: 1; background: rgba(10,16,32,0.8); padding: 10px; border: 1px solid #2a355a; max-width: 320px; }
+    #legend .row { display: flex; align-items: center; gap: 8px; margin: 4px 0; }
+    #legend .swatch { width: 14px; height: 14px; border: 1px solid #1b2440; }
+    #legend ol { margin: 6px 0 0 18px; max-height: 45vh; overflow: auto; padding-right: 8px; }
+    #legend li { margin: 2px 0; }
+  </style>
+  
+<script type=\"importmap\">
+{
+  \"imports\": {
+    \"three\": \"../scripts/vendor/three.module.js\"
+  }
+}
+</script>
+
+</head>
+<body>
+<div id="info">Drag to rotate, scroll to zoom. Cells: 27, Steps: 48</div>
+<div id="legend">
+  <div><strong>Legend</strong></div>
+  <div class="row"><span class="swatch" style="background:#2a6fd2;opacity:0.4"></span>Cell</div>
+  <div class="row"><span class="swatch" style="background:#ff3030"></span>Path</div>
+  <div class="row"><span class="swatch" style="background:#2ecc71"></span>Start</div>
+  <div class="row"><span class="swatch" style="background:#f1c40f"></span>Goal</div>
+  <div class="row"><span class="swatch" style="background:#ff7f0e"></span>Button</div>
+  <div style="margin-top:6px"><strong>Path order</strong></div>
+  <ol id="pathList"></ol>
+</div>
+<script type="module">
+import * as THREE from '../scripts/vendor/three.module.js';
+import { OrbitControls } from '../scripts/vendor/OrbitControls.js';
+
+const data = {"cells": [{"name": "c000", "pos": [0, 0, 0]}, {"name": "c001", "pos": [1, 0, 0]}, {"name": "c002", "pos": [2, 0, 0]}, {"name": "c010", "pos": [0, 1, 0]}, {"name": "c011", "pos": [1, 1, 0]}, {"name": "c012", "pos": [2, 1, 0]}, {"name": "c020", "pos": [0, 2, 0]}, {"name": "c021", "pos": [1, 2, 0]}, {"name": "c022", "pos": [2, 2, 0]}, {"name": "c100", "pos": [0, 0, 1]}, {"name": "c101", "pos": [1, 0, 1]}, {"name": "c102", "pos": [2, 0, 1]}, {"name": "c110", "pos": [0, 1, 1]}, {"name": "c111", "pos": [1, 1, 1]}, {"name": "c112", "pos": [2, 1, 1]}, {"name": "c120", "pos": [0, 2, 1]}, {"name": "c121", "pos": [1, 2, 1]}, {"name": "c122", "pos": [2, 2, 1]}, {"name": "c200", "pos": [0, 0, 2]}, {"name": "c201", "pos": [1, 0, 2]}, {"name": "c202", "pos": [2, 0, 2]}, {"name": "c210", "pos": [0, 1, 2]}, {"name": "c211", "pos": [1, 1, 2]}, {"name": "c212", "pos": [2, 1, 2]}, {"name": "c220", "pos": [0, 2, 2]}, {"name": "c221", "pos": [1, 2, 2]}, {"name": "c222", "pos": [2, 2, 2]}], "path": [{"name": "c000", "pos": [0, 0, 0]}, {"name": "c001", "pos": [1, 0, 0]}, {"name": "c001", "pos": [1, 0, 0]}, {"name": "c011", "pos": [1, 1, 0]}, {"name": "c011", "pos": [1, 1, 0]}, {"name": "c021", "pos": [1, 2, 0]}, {"name": "c021", "pos": [1, 2, 0]}, {"name": "c020", "pos": [0, 2, 0]}, {"name": "c020", "pos": [0, 2, 0]}, {"name": "c010", "pos": [0, 1, 0]}, {"name": "c010", "pos": [0, 1, 0]}, {"name": "c011", "pos": [1, 1, 0]}, {"name": "c011", "pos": [1, 1, 0]}, {"name": "c001", "pos": [1, 0, 0]}, {"name": "c001", "pos": [1, 0, 0]}, {"name": "c002", "pos": [2, 0, 0]}, {"name": "c002", "pos": [2, 0, 0]}, {"name": "c012", "pos": [2, 1, 0]}, {"name": "c012", "pos": [2, 1, 0]}, {"name": "c112", "pos": [2, 1, 1]}, {"name": "c112", "pos": [2, 1, 1]}, {"name": "c102", "pos": [2, 0, 1]}, {"name": "c102", "pos": [2, 0, 1]}, {"name": "c101", "pos": [1, 0, 1]}, {"name": "c101", "pos": [1, 0, 1]}, {"name": "c100", "pos": [0, 0, 1]}, {"name": "c100", "pos": [0, 0, 1]}, {"name": "c101", "pos": [1, 0, 1]}, {"name": "c101", "pos": [1, 0, 1]}, {"name": "c102", "pos": [2, 0, 1]}, {"name": "c102", "pos": [2, 0, 1]}, {"name": "c112", "pos": [2, 1, 1]}, {"name": "c112", "pos": [2, 1, 1]}, {"name": "c111", "pos": [1, 1, 1]}, {"name": "c111", "pos": [1, 1, 1]}, {"name": "c121", "pos": [1, 2, 1]}, {"name": "c121", "pos": [1, 2, 1]}, {"name": "c122", "pos": [2, 2, 1]}, {"name": "c122", "pos": [2, 2, 1]}, {"name": "c121", "pos": [1, 2, 1]}, {"name": "c121", "pos": [1, 2, 1]}, {"name": "c111", "pos": [1, 1, 1]}, {"name": "c111", "pos": [1, 1, 1]}, {"name": "c211", "pos": [1, 1, 2]}, {"name": "c211", "pos": [1, 1, 2]}, {"name": "c221", "pos": [1, 2, 2]}, {"name": "c221", "pos": [1, 2, 2]}, {"name": "c222", "pos": [2, 2, 2]}], "start": {"name": "c000", "pos": [0, 0, 0]}, "goal": {"name": "c222", "pos": [2, 2, 2]}, "buttons": [{"name": "b1", "pos": [1, 2, 0]}, {"name": "b2", "pos": [0, 0, 1]}, {"name": "b3", "pos": [2, 2, 1]}, {"name": "b4", "pos": [0, 2, 0]}]};
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b1020);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+document.body.appendChild(renderer.domElement);
+
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true;
+
+const ambient = new THREE.AmbientLight(0xffffff, 0.7);
+scene.add(ambient);
+const dir = new THREE.DirectionalLight(0xffffff, 0.6);
+dir.position.set(10, 10, 10);
+scene.add(dir);
+
+const cubeGeom = new THREE.BoxGeometry(0.9, 0.9, 0.9);
+const pathGeom = new THREE.BoxGeometry(0.6, 0.6, 0.6);
+
+function addCube(pos, color, opacity, geom = cubeGeom) {
+  const mat = new THREE.MeshPhongMaterial({ color, transparent: true, opacity });
+  const mesh = new THREE.Mesh(geom, mat);
+  mesh.position.set(pos[0], pos[1], pos[2]);
+  scene.add(mesh);
+}
+
+for (const cell of data.cells) {
+  addCube(cell.pos, 0x2a6fd2, 0.2);
+}
+
+function lerp(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function lerpColor(c1, c2, t) {
+  const r1 = (c1 >> 16) & 255;
+  const g1 = (c1 >> 8) & 255;
+  const b1 = c1 & 255;
+  const r2 = (c2 >> 16) & 255;
+  const g2 = (c2 >> 8) & 255;
+  const b2 = c2 & 255;
+  const r = Math.round(lerp(r1, r2, t));
+  const g = Math.round(lerp(g1, g2, t));
+  const b = Math.round(lerp(b1, b2, t));
+  return (r << 16) | (g << 8) | b;
+}
+
+const pathPoints = [];
+const pathList = document.getElementById('pathList');
+for (let i = 0; i < data.path.length; i++) {
+  const cell = data.path[i];
+  const t = data.path.length > 1 ? i / (data.path.length - 1) : 0;
+  const color = lerpColor(0xff3030, 0xffaaaa, t);
+  addCube(cell.pos, color, 0.9, pathGeom);
+  pathPoints.push(new THREE.Vector3(cell.pos[0], cell.pos[1], cell.pos[2]));
+  const li = document.createElement('li');
+  li.textContent = `${i + 1}: ${cell.name}`;
+  pathList.appendChild(li);
+}
+
+function makeLabel(text) {
+  const canvas = document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const fontSize = 32;
+  ctx.font = `${fontSize}px monospace`;
+  const width = ctx.measureText(text).width + 24;
+  canvas.width = width;
+  canvas.height = fontSize + 24;
+  ctx.font = `${fontSize}px monospace`;
+  ctx.fillStyle = 'rgba(10,16,32,0.8)';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillText(text, 12, fontSize + 4);
+  const texture = new THREE.CanvasTexture(canvas);
+  const mat = new THREE.SpriteMaterial({ map: texture, transparent: true, opacity: 0.85 });
+  const sprite = new THREE.Sprite(mat);
+  const scale = 0.006;
+  sprite.scale.set(canvas.width * scale, canvas.height * scale, 1);
+  return sprite;
+}
+
+for (let i = 0; i < data.path.length; i++) {
+  const cell = data.path[i];
+  const label = makeLabel(`${i + 1}:${cell.name}`);
+  label.position.set(cell.pos[0], cell.pos[1] + 0.65, cell.pos[2]);
+  scene.add(label);
+}
+
+if (pathPoints.length >= 2) {
+  const lineGeom = new THREE.BufferGeometry().setFromPoints(pathPoints);
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xff3030 });
+  const line = new THREE.Line(lineGeom, lineMat);
+  scene.add(line);
+}
+
+if (data.start) {
+  addCube(data.start.pos, 0x2ecc71, 0.9);
+}
+
+if (data.goal) {
+  addCube(data.goal.pos, 0xf1c40f, 0.9);
+}
+
+for (const cell of data.buttons) {
+  addCube(cell.pos, 0xff7f0e, 0.9);
+}
+
+const bbox = new THREE.Box3();
+for (const cell of data.cells) {
+  const v = new THREE.Vector3(cell.pos[0], cell.pos[1], cell.pos[2]);
+  bbox.expandByPoint(v);
+}
+const size = new THREE.Vector3();
+bbox.getSize(size);
+const center = new THREE.Vector3();
+bbox.getCenter(center);
+
+camera.position.set(center.x + size.x * 1.5 + 1, center.y + size.y * 1.5 + 1, center.z + size.z * 1.5 + 1);
+controls.target.copy(center);
+
+function onResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+}
+window.addEventListener('resize', onResize);
+
+function animate() {
+  requestAnimationFrame(animate);
+  controls.update();
+  renderer.render(scene, camera);
+}
+animate();
+</script>
+</body>
+</html>
