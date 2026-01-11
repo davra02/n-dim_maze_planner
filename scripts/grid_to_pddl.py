@@ -217,7 +217,7 @@ def main():
     out.append("  )")
     out.append("")
     out.append("  (:goal (and")
-    out.append(f"    (at {goal})")
+    out.append(f"    (agent-at a1 {goal})")
     out.append("  ))")
     out.append("")
     out.append("  (:metric minimize (total-cost))")

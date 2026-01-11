@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import json
 import platform
 import re
 import subprocess
@@ -166,11 +167,35 @@ def format_stats(text):
         return "Stats not found in output."
     return "\n".join(lines)
 
+
+def parse_stats(text: str):
+    """Return a machine-readable stats dict extracted from OPTIC output."""
+    cost = extract_stat(r"; Cost:\s*([0-9]+(?:\.[0-9]+)?)", text)
+    time = extract_stat(r"; Time\s*([0-9]+(?:\.[0-9]+)?)", text)
+    states = extract_stat(r"; States evaluated:?\s*([0-9]+)", text)
+    metric = extract_stat(r"; Plan found with metric\s*([0-9]+(?:\.[0-9]+)?)", text)
+
+    out = {}
+    if cost is not None:
+        out["cost"] = float(cost)
+    if metric is not None:
+        out["metric"] = float(metric)
+    if time is not None:
+        out["time_seconds"] = float(time)
+    if states is not None:
+        out["states_evaluated"] = int(states)
+    return out
+
 def write_plan_file(plan, path: Path):
     lines = []
     for step in plan:
         lines.append(f"{step['start']:.3f}: ({step['action']}) [{step['dur']:.3f}]")
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def write_stats_file(payload: dict, path: Path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 
 
 def find_val_binary():
@@ -257,6 +282,18 @@ def main():
         help="Print full raw planner output",
     )
     parser.add_argument(
+        "--time-limit",
+        type=float,
+        default=None,
+        help="Time limit in seconds (kills the planner process after this time).",
+    )
+    parser.add_argument(
+        "--stats-out",
+        type=Path,
+        default=None,
+        help="Write a JSON summary (plan + stats + run config) to this file.",
+    )
+    parser.add_argument(
         "--plan-out",
         type=Path,
         help="Write the extracted plan to this file",
@@ -307,19 +344,62 @@ def main():
         if args.fast:
             cmd.append("-N")
         cmd.extend([str(args.domain), str(args.problem)])
+    timed_out = False
+    proc_returncode = 0
     try:
-        proc = subprocess.run(cmd, capture_output=True, text=True, check=False)
+        proc = subprocess.run(
+            cmd,
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=args.time_limit,
+        )
+        proc_returncode = proc.returncode
+        output = strip_ansi((proc.stdout or "") + (proc.stderr or ""))
+    except subprocess.TimeoutExpired as exc:
+        timed_out = True
+        proc_returncode = 124
+        stdout = exc.stdout or ""
+        stderr = exc.stderr or ""
+        output = strip_ansi(stdout + stderr)
     except OSError as exc:
         print(f"Failed to run planner: {exc}", file=sys.stderr)
         sys.exit(2)
 
-    output = strip_ansi((proc.stdout or "") + (proc.stderr or ""))
+    plan = extract_plan(output)
+    stats = parse_stats(output)
+
+    # Optional machine-readable output for experiments / reports.
+    if args.stats_out:
+        makespan = max((step["end"] for step in plan), default=0.0)
+        stats_payload = {
+            "domain": str(args.domain),
+            "problem": str(args.problem),
+            "mode": "docker" if use_docker else "native",
+            "docker_image": args.docker_image if use_docker else None,
+            "planner": None if use_docker else str(args.planner),
+            "fast": bool(args.fast),
+            "time_limit_seconds": args.time_limit,
+            "timed_out": timed_out,
+            "return_code": proc_returncode,
+            "plan": {
+                "found": bool(plan),
+                "actions": len(plan),
+                "makespan": float(makespan),
+            },
+            "stats": stats,
+        }
+        if args.plan_out:
+            stats_payload["plan_out"] = str(args.plan_out)
+        write_stats_file(stats_payload, args.stats_out)
 
     if args.raw:
         print(output)
+        if timed_out:
+            print()
+            print(f"Timed out after {args.time_limit:.1f}s")
         return
 
-    plan = extract_plan(output)
     print(format_plan(plan))
     print()
     print(format_stats(output))
@@ -350,9 +430,13 @@ def main():
         print()
         print(format_grid(coords, start, goal, path_cells))
 
-    if proc.returncode != 0:
+    if timed_out:
         print()
-        print(f"Planner exited with code {proc.returncode}")
+        print(f"Timed out after {args.time_limit:.1f}s")
+
+    if proc_returncode != 0 and not timed_out:
+        print()
+        print(f"Planner exited with code {proc_returncode}")
 
 
 if __name__ == "__main__":

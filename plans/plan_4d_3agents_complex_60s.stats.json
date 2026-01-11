@@ -1,0 +1,22 @@
+{
+  "docker_image": "n-maze-planner-optic:arm64",
+  "domain": "domains/domain.pddl",
+  "fast": true,
+  "mode": "docker",
+  "plan": {
+    "actions": 41,
+    "found": true,
+    "makespan": 23.018
+  },
+  "plan_out": "plans/plan_4d_3agents_complex_60s.out",
+  "planner": null,
+  "problem": "problems/problem_4d_3agents_complex.pddl",
+  "return_code": 0,
+  "stats": {
+    "cost": 23.018,
+    "states_evaluated": 55,
+    "time_seconds": 0.03
+  },
+  "time_limit_seconds": 60.0,
+  "timed_out": false
+}
