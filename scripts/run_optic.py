@@ -6,11 +6,20 @@ import re
 import subprocess
 import sys
 import shutil
+import time
 from pathlib import Path
 
 ANSI_RE = re.compile(r"\x1b\[[0-9;]*m")
 PLAN_RE = re.compile(r"^\s*([0-9]+(?:\.[0-9]+)?):\s+\(([^)]+)\)\s+\[([0-9]+(?:\.[0-9]+)?)\]", re.M)
 CELL_RE = re.compile(r"\bc(\d+)[,_]?(\d+)\b")
+
+
+def coerce_text(value) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode("utf-8", errors="ignore")
+    return str(value)
 
 
 def strip_ansi(text: str) -> str:
@@ -346,6 +355,7 @@ def main():
         cmd.extend([str(args.domain), str(args.problem)])
     timed_out = False
     proc_returncode = 0
+    wall_start = time.perf_counter()
     try:
         proc = subprocess.run(
             cmd,
@@ -355,16 +365,15 @@ def main():
             timeout=args.time_limit,
         )
         proc_returncode = proc.returncode
-        output = strip_ansi((proc.stdout or "") + (proc.stderr or ""))
+        output = strip_ansi(coerce_text(proc.stdout) + coerce_text(proc.stderr))
     except subprocess.TimeoutExpired as exc:
         timed_out = True
         proc_returncode = 124
-        stdout = exc.stdout or ""
-        stderr = exc.stderr or ""
-        output = strip_ansi(stdout + stderr)
+        output = strip_ansi(coerce_text(exc.stdout) + coerce_text(exc.stderr))
     except OSError as exc:
         print(f"Failed to run planner: {exc}", file=sys.stderr)
         sys.exit(2)
+    wall_seconds = time.perf_counter() - wall_start
 
     plan = extract_plan(output)
     stats = parse_stats(output)
@@ -382,6 +391,7 @@ def main():
             "time_limit_seconds": args.time_limit,
             "timed_out": timed_out,
             "return_code": proc_returncode,
+            "wall_seconds": float(wall_seconds),
             "plan": {
                 "found": bool(plan),
                 "actions": len(plan),

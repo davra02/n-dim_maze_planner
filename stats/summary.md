@@ -1,0 +1,9 @@
+| problem | found | metric | makespan | actions | states_evaluated | wall_seconds | timed_out |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| problem | True | 9.000 | 11.003 | 9 | 2879 | 1.800 | False |
+| problem_from_grid | True | 21.000 | 21.020 | 21 | None | 60.013 | True |
+| problem_4x4x4 | True | 25.000 | 25.020 | 21 | None | 60.009 | True |
+| problem_4d_3agents_complex | True | 47.000 | 23.018 | 41 | None | 60.007 | True |
+| problem_5x5x5_two_agents | True | 48.000 | 27.020 | 36 | None | 60.008 | True |
+| problem_5x5x5_single_agent_maze | True | 132.000 | 132.123 | 124 | None | 60.008 | True |
+| problem_4d_3agents_unsolvable | False | None | 0.000 | 0 | None | 0.248 | False |

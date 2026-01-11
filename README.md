@@ -222,6 +222,35 @@ python3 scripts/gen_problem_3d.py <output_problem.pddl>
 - If the native binary isn't present, `scripts/run_optic.py` will automatically fall back to Docker if `docker` is available.
 - Windows: works with Docker Desktop (WSL2 backend recommended). You can build/run either from WSL or PowerShell.
 
+## Benchmarking (stats + plots)
+
+If you want a battery of runs (different problems, fast vs normal, repeats) and matplotlib plots, use:
+
+Install plotting deps:
+
+```bash
+python3 -m pip install -r requirements.txt
+```
+
+Run benchmarks (native OPTIC, 60s time limit, 3 repeats, both fast+normal):
+
+```bash
+python3 scripts/benchmark.py --time-limit 60 --repeats 3
+```
+
+This creates `benchmarks/<timestamp>/` with:
+- `index.csv` (one row per run)
+- `runs/*.json` (per-run `--stats-out` JSON)
+- `plans/*.out` (per-run extracted plan)
+
+Generate plots (PNG) from a benchmark run:
+
+```bash
+python3 scripts/plot_stats.py benchmarks/<timestamp>/index.csv
+```
+
+Plots are written to `graphs/benchmarks/<timestamp>/`.
+
 ### Windows (WSL2) quick guide
 
 In WSL (Ubuntu):

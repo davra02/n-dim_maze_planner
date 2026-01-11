@@ -1,0 +1,19 @@
+{
+  "docker_image": null,
+  "domain": "domains/domain.pddl",
+  "fast": true,
+  "mode": "native",
+  "plan": {
+    "actions": 0,
+    "found": false,
+    "makespan": 0.0
+  },
+  "plan_out": "plans/test_wall.plan.out",
+  "planner": "planners/optic/optic/release/optic/optic-clp",
+  "problem": "problems/problem_3x3x5.pddl",
+  "return_code": 1,
+  "stats": {},
+  "time_limit_seconds": 5.0,
+  "timed_out": false,
+  "wall_seconds": 0.019491
+}

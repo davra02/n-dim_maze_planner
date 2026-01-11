@@ -1,0 +1,8 @@
+problem,found,actions,makespan,metric,cost,states_evaluated,planner_time,wall_seconds,timed_out,return_code
+problem,True,9,11.003,9.0,9.0,2879,,1.799851708,False,0
+problem_from_grid,True,21,21.02,21.0,,,,60.012893333,True,124
+problem_4x4x4,True,21,25.02,25.0,,,,60.009258208999995,True,124
+problem_4d_3agents_complex,True,41,23.018,47.0,,,,60.007154583,True,124
+problem_5x5x5_two_agents,True,36,27.02,48.0,,,,60.007669,True,124
+problem_5x5x5_single_agent_maze,True,124,132.123,132.0,,,,60.00751425,True,124
+problem_4d_3agents_unsolvable,False,0,0.0,,,,,0.248197375,False,0
