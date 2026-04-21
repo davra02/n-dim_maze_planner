@@ -1,4 +1,4 @@
-# n-maze_planner
+# n-dim_maze_planner
 
 PDDL maze problems + OPTIC planning + HTML 3D rendering.
 
