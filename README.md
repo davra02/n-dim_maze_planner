@@ -1,6 +1,6 @@
 # n-dim_maze_planner
 
-PDDL maze problems + OPTIC planning + HTML 3D rendering.
+A compact AI planning toolkit for modeling and solving temporal multi-agent maze problems in PDDL. It supports rich mechanics such as doors, buttons, stairs, elevators, timed events, and action costs, and includes the full workflow from problem generation and OPTIC execution to 3D HTML visualization, graph export, and benchmarking.
 
 ## Quickstart (cross-platform with Docker)
 
