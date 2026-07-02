@@ -5,7 +5,11 @@ from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 
 EDGE_RE = re.compile(r"\((adjacent|connects|stairs|elevator-connects)\s+(\S+)\s+(\S+)(?:\s+(\S+))?\)")
-PLAN_STEP_RE = re.compile(r"^\s*[0-9]+(?:\.[0-9]+)?:\s*\(([^)]+)\)\s*\[[0-9]+(?:\.[0-9]+)?\]\s*$")
+# OPTIC plan line format (temporal):
+#   0.000: (move a1 c0_0_0 c0_0_1) [1.000]
+PLAN_STEP_RE = re.compile(
+    r"^\s*([0-9]+(?:\.[0-9]+)?):\s*\(([^)]+)\)\s*\[([0-9]+(?:\.[0-9]+)?)\]\s*$"
+)
 CELL_RE = re.compile(r"^c[0-9_]+$|^c\d+[,_]?\d+$")
 
 
@@ -106,17 +110,26 @@ def agent_palette(agents: Sequence[str]) -> Dict[str, str]:
     return colors
 
 
-def parse_plan_steps(plan_text: str) -> List[List[str]]:
-    """Return list of tokenized actions in order."""
-    steps: List[List[str]] = []
+def parse_plan_steps(plan_text: str) -> List[Tuple[float, float, List[str]]]:
+    """Return list of (start_time, duration, tokenized_action)."""
+    steps: List[Tuple[float, float, List[str]]] = []
     for line in plan_text.splitlines():
         m = PLAN_STEP_RE.match(line)
         if not m:
             continue
-        action_text = m.group(1).strip()
+        start_s, action_text, dur_s = m.groups()
+        action_text = action_text.strip()
         if not action_text:
             continue
-        steps.append(action_text.split())
+        try:
+            start_t = float(start_s)
+        except Exception:
+            start_t = 0.0
+        try:
+            dur_t = float(dur_s)
+        except Exception:
+            dur_t = 0.0
+        steps.append((start_t, dur_t, action_text.split()))
     return steps
 
 
@@ -144,22 +157,40 @@ def plan_to_dot(
     plan_text: str,
     agents_filter: Optional[Sequence[str]] = None,
     include_full_graph: bool = True,
+    rankdir: str = "LR",
+    graph_size: Optional[str] = None,
+    graph_ratio: Optional[str] = None,
+    graph_dpi: Optional[int] = None,
+    node_size: float = 1.0,
 ) -> str:
     steps = parse_plan_steps(plan_text)
     if not steps:
         raise ValueError("No se encontraron acciones en el plan.")
 
-    inferred_agents = infer_agents_from_steps(steps)
+    inferred_agents = infer_agents_from_steps([parts for _, _, parts in steps])
     agents = list(agents_filter) if agents_filter else inferred_agents
     color_by_agent = agent_palette(agents)
     start_by_agent, goal_by_agent = parse_agent_starts_and_goals(problem_text)
 
     lines: List[str] = []
     lines.append("digraph plan {")
-    lines.append("  rankdir=LR;")
+    lines.append(f"  rankdir={rankdir};")
     lines.append("  splines=true;")
-    lines.append("  node [shape=circle, fontsize=11];")
-    lines.append("  edge [fontsize=10];")
+    if graph_size or graph_ratio or graph_dpi:
+        attrs: List[str] = []
+        if graph_size:
+            attrs.append(f"size=\"{graph_size}\"")
+        if graph_ratio:
+            attrs.append(f"ratio=\"{graph_ratio}\"")
+        if graph_dpi:
+            attrs.append(f"dpi={int(graph_dpi)}")
+        lines.append(f"  graph [{', '.join(attrs)}];")
+    # Make the output more readable in 16:9 renders.
+    # NOTE: width/height are in inches in Graphviz.
+    lines.append(
+        f"  node [shape=circle, fontsize=22, width={node_size:.3f}, height={node_size:.3f}, fixedsize=true];"
+    )
+    lines.append("  edge [fontsize=20];")
 
     # Optional: render full connectivity graph in the background (minimal / no labels)
     if include_full_graph:
@@ -167,18 +198,18 @@ def plan_to_dot(
         for kind, src, dst, meta in bg_edges:
             # Keep it intentionally low-noise for higher dimensions.
             lines.append(
-                f"  {safe_id(src)} -> {safe_id(dst)} [color=\"#cccccc\", penwidth=1, label=\"\", arrowsize=0.7];"
+                f"  {safe_id(src)} -> {safe_id(dst)} [color=\"#cccccc\", penwidth=2, label=\"\", arrowsize=1.0];"
             )
 
     # Legend
     lines.append("  subgraph cluster_legend {")
     lines.append("    label=\"Agentes\";")
-    lines.append("    fontsize=12;")
+    lines.append("    fontsize=24;")
     lines.append("    color=\"#dddddd\";")
     for agent in agents:
         aid = safe_id(f"legend_{agent}")
         lines.append(
-            f"    {aid} [shape=box, style=\"rounded,filled\", fillcolor=\"{color_by_agent[agent]}\", label=\"{agent}\"];"
+            f"    {aid} [shape=box, fontsize=22, style=\"rounded,filled\", fillcolor=\"{color_by_agent[agent]}\", label=\"{agent}\"];"
         )
     lines.append("  }")
 
@@ -189,16 +220,16 @@ def plan_to_dot(
             sid = safe_id(f"{agent}_start")
             cell = start_by_agent[agent]
             lines.append(
-                f"  {sid} [shape=box, style=\"rounded,filled\", fillcolor=\"{color}\", label=\"inicio\"];"
+                f"  {sid} [shape=box, fontsize=20, style=\"rounded,filled\", fillcolor=\"{color}\", label=\"inicio\"];"
             )
-            lines.append(f"  {sid} -> {safe_id(cell)} [color=\"{color}\", penwidth=2];")
+            lines.append(f"  {sid} -> {safe_id(cell)} [color=\"{color}\", penwidth=4, arrowsize=1.1];")
         if agent in goal_by_agent:
             gid = safe_id(f"{agent}_goal")
             cell = goal_by_agent[agent]
             lines.append(
-                f"  {gid} [shape=box, style=\"rounded,filled\", fillcolor=\"{color}\", label=\"meta\"];"
+                f"  {gid} [shape=box, fontsize=20, style=\"rounded,filled\", fillcolor=\"{color}\", label=\"meta\"];"
             )
-            lines.append(f"  {gid} -> {safe_id(cell)} [color=\"{color}\", penwidth=2];")
+            lines.append(f"  {gid} -> {safe_id(cell)} [color=\"{color}\", penwidth=4, arrowsize=1.1];")
 
     # Declare cell nodes with compact labels.
     cell_nodes: Dict[str, str] = {}
@@ -208,7 +239,7 @@ def plan_to_dot(
                 cell_nodes[src] = cell_label(src)
             if is_cell(dst):
                 cell_nodes[dst] = cell_label(dst)
-    for parts in steps:
+    for _, _, parts in steps:
         for tok in parts:
             if is_cell(tok):
                 cell_nodes[tok] = cell_label(tok)
@@ -220,9 +251,8 @@ def plan_to_dot(
     for cell, label in sorted(cell_nodes.items()):
         lines.append(f"  {safe_id(cell)} [label=\"{label}\"]; ")
 
-    # Emit plan actions.
-    step_num = 0
-    for parts in steps:
+    # Emit plan actions. Only include the start time; no extra sequential numbering.
+    for start_t, _dur_t, parts in steps:
         if not parts:
             continue
         action = parts[0]
@@ -233,20 +263,21 @@ def plan_to_dot(
             continue
 
         color = color_by_agent.get(agent, "#000000")
-        step_num += 1
+        time_prefix = f"t={start_t:.3f}: "
 
         def edge(src: str, dst: str, text: str, style: str = "solid"):
             lines.append(
-                f"  {safe_id(src)} -> {safe_id(dst)} [color=\"{color}\", penwidth=2, label=\"{step_num}: {text}\", style=\"{style}\"];"
+                f"  {safe_id(src)} -> {safe_id(dst)} [color=\"{color}\", penwidth=4, arrowsize=1.1, label=\"{time_prefix}{text}\", style=\"{style}\"];"
             )
 
         def action_box(at_cell: str, text: str):
-            box_id = safe_id(f"{agent}_act_{step_num}")
+            # Use time + a stable hash-ish suffix to avoid collisions if multiple actions start at the same time.
+            box_id = safe_id(f"{agent}_act_{start_t:.3f}_{abs(hash(' '.join(parts))) % 100000}")
             lines.append(
-                f"  {box_id} [shape=box, style=\"rounded\", color=\"{color}\", fontcolor=\"{color}\", label=\"{step_num}: {text}\"];"
+                f"  {box_id} [shape=box, fontsize=20, style=\"rounded\", color=\"{color}\", fontcolor=\"{color}\", label=\"{time_prefix}{text}\"];"
             )
             lines.append(
-                f"  {safe_id(at_cell)} -> {box_id} [color=\"{color}\", style=\"dashed\", arrowhead=none];"
+                f"  {safe_id(at_cell)} -> {box_id} [color=\"{color}\", penwidth=2, style=\"dashed\", arrowhead=none];"
             )
 
         # Movements
@@ -351,7 +382,42 @@ def main():
         action="store_true",
         help=argparse.SUPPRESS,
     )
+
+    # Layout / rendering controls (useful for PNG output that otherwise becomes too wide).
+    parser.add_argument(
+        "--aspect",
+        default=None,
+        help="Fuerza un aspect ratio en la imagen (ej: 16:9). Se aplica como size=\"W,H!\" y ratio=fill.",
+    )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=None,
+        help="DPI del grafo (si usas --aspect, por defecto 120 => 16x9in ~ 1920x1080 px).",
+    )
+    parser.add_argument(
+        "--rankdir",
+        default="LR",
+        choices=["LR", "TB"],
+        help="Dirección del layout: LR (horizontal) o TB (vertical).",
+    )
+    parser.add_argument(
+        "--node-size",
+        type=float,
+        default=1.0,
+        help="Tamaño de los nodos (celdas) en pulgadas (Graphviz width/height). Usa 2.0 para el doble.",
+    )
     args = parser.parse_args()
+
+    def parse_aspect(value: str) -> Optional[Tuple[float, float]]:
+        m = re.match(r"^\s*([0-9]+(?:\.[0-9]+)?)\s*[:xX/,]\s*([0-9]+(?:\.[0-9]+)?)\s*$", value)
+        if not m:
+            return None
+        w = float(m.group(1))
+        h = float(m.group(2))
+        if w <= 0 or h <= 0:
+            return None
+        return w, h
 
     text = args.problem.read_text(encoding="utf-8", errors="ignore")
 
@@ -376,6 +442,15 @@ def main():
         plan_text=plan_text,
         agents_filter=agents_filter,
         include_full_graph=include_full_graph,
+        rankdir=args.rankdir,
+        graph_size=(
+            (lambda wh: f"{wh[0]},{wh[1]}!" if wh else None)(parse_aspect(args.aspect))
+            if args.aspect
+            else None
+        ),
+        graph_ratio=("fill" if args.aspect else None),
+        graph_dpi=(args.dpi if args.dpi else (120 if args.aspect else None)),
+        node_size=float(args.node_size),
     )
     args.output.write_text(dot + "\n", encoding="utf-8")
 
