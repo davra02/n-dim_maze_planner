@@ -53,16 +53,31 @@ src/
 
 ## Deployment (Vercel)
 
-The app is deployed as its own Vercel instance and is reached from the portfolio
-(`www.davidreyesales.com`) under `/projects/n-dim_maze_planner` via a rewrite.
-Build with the matching base path so assets resolve behind the proxy:
+The app is deployed as its **own Vercel project** and is reached from the
+portfolio at `www.davidreyesales.com/maze_planner`, which proxies that path here
+via a Next.js rewrite. Two pieces make this work:
 
-```bash
-BASE_PATH=/projects/n-dim_maze_planner/ npm run build
-```
+1. **This app** builds with `base = '/maze_planner/'` (see `vite.config.ts`), so
+   `index.html` references `/maze_planner/assets/...` — absolute URLs that stay
+   valid under the portfolio domain. Override with `BASE_PATH=/ npm run build`
+   if you ever mount it at a root instead.
+2. **The portfolio** (`my-portfolio`, Next.js) rewrites the path to this
+   deployment, stripping the prefix:
 
-Served at the instance root, the default `BASE_PATH=/` works as-is.
-`vercel.json` rewrites all routes to `index.html` (SPA).
+   ```ts
+   // next.config.ts
+   async rewrites() {
+     return [
+       { source: '/maze_planner', destination: 'https://<this-app>.vercel.app' },
+       { source: '/maze_planner/:path*', destination: 'https://<this-app>.vercel.app/:path*' },
+     ];
+   }
+   ```
+
+Vercel project settings for this app: **Root Directory = `webapp`** (the repo
+root is the Python project). `vercel.json` handles SPA routing and also maps
+`/maze_planner/assets/*` → `/assets/*`, so the standalone `*.vercel.app` URL
+keeps working on its own.
 
 ## Connecting a real OPTIC backend (future)
 

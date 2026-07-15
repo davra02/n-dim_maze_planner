@@ -2,5 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
-  "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
+  "rewrites": [
+    { "source": "/maze_planner/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/maze_planner/:path*", "destination": "/index.html" },
+    { "source": "/:path*", "destination": "/index.html" }
+  ]
 }
